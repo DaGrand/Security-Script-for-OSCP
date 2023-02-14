@@ -1,7 +1,19 @@
 import argparse
 import csv
-import nmap
 import time
+
+# Try to import the nmap module; if it fails, prompt the user to install it
+try:
+    import nmap
+except ImportError:
+    print("The 'nmap' module is not installed. Would you like to install it now? (y/n)")
+    choice = input().lower()
+    if choice == 'y':
+        !pip install python-nmap
+        import nmap
+    else:
+        print("Exiting...")
+        exit()
 
 def scan_ports(ip, aggressive=False, vulners=False, syn_scan=False):
     scanner = nmap.PortScanner()
