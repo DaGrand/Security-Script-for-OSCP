@@ -1,8 +1,5 @@
 import argparse
-import csv
-import time
 import nmap
-
 
 def scan_ports(ip, aggressive=False, vulners=False, syn_scan=False):
     scanner = nmap.PortScanner()
@@ -17,16 +14,18 @@ def scan_ports(ip, aggressive=False, vulners=False, syn_scan=False):
         if scanner[ip]['tcp'][port]['state'] == 'open':
             open_ports.append(port)
     if open_ports:
-        print(f"Open ports on {ip}: {', '.join(map(str, open_ports))}")
+        output = f"Open ports on {ip}: {', '.join(map(str, open_ports))}\n"
     else:
-        print(f"No open ports found on {ip}")
+        output = f"No open ports found on {ip}\n"
     if vulners:
-        print(f"Scanning for vulnerabilities on {ip}...")
+        output += f"Scanning for vulnerabilities on {ip}...\n"
         scanner.scan(ip, arguments='-sV --script nmap-vulners')
         for port in scanner[ip]['tcp']:
             if scanner[ip]['tcp'][port]['state'] == 'open':
+                output += f"Vulnerabilities found on port {port}:\n"
                 for result in scanner[ip]['tcp'][port]['script']['vulners']:
-                    results.append([ip, port, result['id'], result['cvss']])
+                    output += f" - {result['id']} ({result['cvss']})\n"
+    return output
 
 # Set up command-line argument parser
 parser = argparse.ArgumentParser()
@@ -37,10 +36,8 @@ parser.add_argument('-v', '--vulners', action='store_true',
                     help='Scan for vulnerabilities')
 parser.add_argument('-s', '--syn', action='store_true',
                     help='Use SYN scanning')
-parser.add_argument('-t', '--time', type=int, default=0,
-                    help='Time to wait (in seconds) between scans')
-parser.add_argument('-o', '--output', default='output.csv',
-                    help='Output file for results')
+parser.add_argument('-o', '--output', default='output.txt',
+                    help='Output file name')
 
 # Parse command-line arguments
 args = parser.parse_args()
@@ -49,25 +46,20 @@ args = parser.parse_args()
 with open(args.file, 'r') as file:
     ip_list = file.readlines()
 
-# Set up a list to store the results
-results = []
-
 # Loop through the IP addresses and scan for open ports and vulnerabilities
+output = ''
 for ip in ip_list:
     ip = ip.strip()  # Remove any extra whitespace or newline characters
     if args.syn:
-        print(f"Scanning {ip} (SYN scan mode)...")
+        output += f"Scanning {ip} (SYN scan mode)...\n"
     elif args.aggressive:
-        print(f"Scanning {ip} (aggressive mode)...")
+        output += f"Scanning {ip} (aggressive mode)...\n"
     else:
-        print(f"Scanning {ip}...")
-    scan_ports(ip, aggressive=args.aggressive, vulners=args.vulners, syn_scan=args.syn)
-    time.sleep(args.time)  # Pause the script for the specified amount of time
+        output += f"Scanning {ip}...\n"
+    output += scan_ports(ip, aggressive=args.aggressive, vulners=args.vulners, syn_scan=args.syn)
 
-# Export results to a CSV file
-with open(args.output, 'w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['IP Address', 'Port', 'Vulnerability ID', 'CVSS'])
-    for result in results:
-        writer.writerow(result)
-        print(f"Exported result for {result[0]} to {args.output}")
+# Write the output to a file
+with open(args.output, 'w') as file:
+    file.write(output)
+
+print(f"Results saved to {args.output}")

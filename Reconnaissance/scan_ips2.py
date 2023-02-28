@@ -1,8 +1,10 @@
 import argparse
 import csv
-import time
 import nmap
+import time
 
+# Define results list outside of scan_ports function
+results = []
 
 def scan_ports(ip, aggressive=False, vulners=False, syn_scan=False):
     scanner = nmap.PortScanner()
@@ -25,8 +27,10 @@ def scan_ports(ip, aggressive=False, vulners=False, syn_scan=False):
         scanner.scan(ip, arguments='-sV --script nmap-vulners')
         for port in scanner[ip]['tcp']:
             if scanner[ip]['tcp'][port]['state'] == 'open':
-                for result in scanner[ip]['tcp'][port]['script']['vulners']:
-                    results.append([ip, port, result['id'], result['cvss']])
+                if 'script' in scanner[ip]['tcp'][port]:
+                    for result in scanner[ip]['tcp'][port]['script']['vulners']:
+                        results.append([ip, port, result['id'], result['cvss']])
+    print(f"Results for {ip}: {results}")
 
 # Set up command-line argument parser
 parser = argparse.ArgumentParser()
@@ -48,9 +52,6 @@ args = parser.parse_args()
 # Open the file containing the list of IP addresses
 with open(args.file, 'r') as file:
     ip_list = file.readlines()
-
-# Set up a list to store the results
-results = []
 
 # Loop through the IP addresses and scan for open ports and vulnerabilities
 for ip in ip_list:
