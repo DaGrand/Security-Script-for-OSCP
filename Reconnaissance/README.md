@@ -34,3 +34,11 @@ To run the script and wait 5 seconds between each scan, use the -t or --time fla
 
 #### Output file
 A new argument called -o or --output that specifies the output file for the results. We also set up a list called results to store the results for each IP address scanned, including any vulnerabilities found.
+
+
+## Errors 
+For the error message
+`ModuleNotFoundError: No module named 'nmap'`
+run the command below
+
+`pip install python-nmap`
