@@ -176,7 +176,11 @@ function Show-FindUserListMenu {
             $ip = Read-Host "Enter IP"
             Invoke-Expression "net rpc group members 'Domain Users' -W $domain -I $ip -U '%'"
         }
-        4 { Write-Host "OSINT - Enumerate username on internet" }
+        4 { $domain = Read-Host "Enter domain you want to enum"
+            $userdb = Read-Host "Enter User list file"
+            $ip = Read-Host "Enter IP"
+            Invoke-Expression "nmap -p 88 --script=krb5-enum-users --script-args="krb5-enum-users.realm=$domain,userdb=$userdb" $ip"
+        }
         0 { Show-MainMenu }
         default { Write-Host "Invalid selection. Try again."; Show-FindUserListMenu }
     }
