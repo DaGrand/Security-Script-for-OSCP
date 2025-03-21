@@ -1,44 +1,58 @@
-In this script, I define a function called scan_ports that takes an IP address and an optional aggressive argument. The aggressive argument is a boolean flag that indicates whether to use aggressive scanning mode or not. If aggressive is True, we pass the -T4 -A arguments to the PortScanner object to enable more aggressive scanning. Otherwise, we use the default scanning settings.
+Nmap Reconnaissance Script
+===========================
 
-We also define a command-line argument parser using the argparse module. The parser takes a required file argument, which is the name of the file containing the list of IP addresses. It also takes an optional -a or --aggressive flag, which sets the aggressive argument to True.
+📌 Description
+--------------
+This Python script automates a series of Nmap scans against a list of IP addresses. Results are stored in a single `.nmap` file and a `.csv` file summarizing open ports and scan types. 
 
-In the main part of the script, we open the file containing the list of IP addresses and loop through each IP. For each IP, we print a message indicating that we are scanning that IP, and then call the scan_ports function with the IP and the aggressive flag that was set on the command line.
+It’s designed to:
+- Run **fast scans first** (for quick insights)
+- Follow up with **more extensive scans**
+- Save all results in a timestamped output folder (format: `output_MM-DD_HH-MM`)
 
-#### Normal scan
-To run the script, save it to a file (e.g. scan_ips.py) and then run it from the command line like this:
+⚙️ Features
+-----------
+- Scan Types:
+  - `-sC` (default scripts)
+  - `-sV` (service version detection)
+  - `--version-light` (lightweight version detection)
+  - `-p-` (full port scan)
+  - `-T0` (slow timing for stealth)
+  - Random web scan on port 80 with scripts (`banner,http-title`)
 
-`python scan_ips.py ip_addresses.txt`
+- Output:
+  - All `.nmap` results are appended into a single file
+  - A `.csv` file listing all open ports and scan types
+  - Organized output directory with current date and time (no year or seconds)
 
-This will scan each IP address in ip_addresses.txt using the default scanning settings. 
+▶️ Usage
+--------
+1. Prepare a file containing one IP address per line:
 
-#### Aggressive scan
-To enable aggressive scanning mode, use the -a or --aggressive flag:
+Example: `ips.txt`
+```
+192.168.1.1
+10.10.10.10
+```
 
-`python scan_ips.py ip_addresses.txt -a`
+2. Run the script:
+```
+`python FirstRecon.py ips.txt -o output.csv -t 2`
+```
 
-#### Syn Ack scan
-A new argument called -s or --syn that indicates whether to use SYN scanning or not. If this argument is provided on the command line, we call the PortScanner object again with the -sS -p- arguments to enable SYN scanning and scan all ports using the -p- option.
+- `ips.txt`: your input list of IP addresses
+- `-o output.csv`: optional output filename for the CSV (default: `output.csv`)
+- `-t 2`: optional time delay in seconds between each scan
 
-We modify the scan_ports function to include the syn_scan parameter, which is False by default. If syn_scan is True, we call the PortScanner object with the -sS -p- arguments to enable SYN scanning and scan all ports. Otherwise, we use the -p- argument to scan all ports without using SYN scanning.
+⚠️ Warning
+----------
+Do **not** scan systems you do not own or have explicit permission to scan. This tool is for **authorized and ethical use only**.
 
-To run the script with SYN scanning enabled and scan all ports, use the -s or --syn flag:
+🛠️ Requirements
+----------------
+- Python 3.x
+- Nmap installed and available in your system path (`nmap` command)
 
-`python scan_ips.py ip_addresses.txt -s`
-
-#### Full scan with delay
-A new argument called -t or --time that specifies the amount of time to wait between scans, in seconds. We use the time.sleep() function to pause the script for this amount of time between each scan.
-
-To run the script and wait 5 seconds between each scan, use the -t or --time flag:
-
-`python scan_ips.py ip_addresses.txt -t 5`
-
-#### Output file
-A new argument called -o or --output that specifies the output file for the results. We also set up a list called results to store the results for each IP address scanned, including any vulnerabilities found.
-
-
-## Errors 
-For the error message
-`ModuleNotFoundError: No module named 'nmap'`
-run the command below
-
-`pip install python-nmap`
+🙌 Author
+---------
+This tool was built to streamline and standardize network reconnaissance using Nmap.
