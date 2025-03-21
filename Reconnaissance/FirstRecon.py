@@ -42,7 +42,6 @@ Attention :
 import argparse
 import csv
 import time
-import nmap
 import os
 
 def run_scan(ip, scan_type, scan_command, results):
