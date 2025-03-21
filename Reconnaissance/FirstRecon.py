@@ -70,7 +70,7 @@ def run_scan(ip, scan_type, scan_command, results, output_file):
                     if len(parts) > 2 and "/" in parts[0]:
                         port = parts[0].split("/")[0]
                         service = " ".join(parts[2:])
-                        results.append([current_ip, port, scan_type, service])
+                        results.append([current_ip, port, service])
     except Exception as e:
         print(f"[-] Failed to parse .nmap file: {e}")
 
@@ -124,7 +124,7 @@ def run_searchsploit(results, output_dir):
         writer.writerow(["IP", "Port", "Search Type", "Query", "Result"])
 
         for row in results:
-            ip, port, _, service = row
+            ip, port, service = row
             queries = [("service", service), ("port", f"-p {port}")]
 
             for search_type, query in queries:
@@ -164,7 +164,7 @@ def main():
     output_csv_path = os.path.join(output_dir, args.output)
     with open(output_csv_path, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['IP Address', 'Port', 'Scan Type', 'Service'])
+        writer.writerow(['IP Address', 'Port', 'Service'])
         for result in results:
             writer.writerow(result)
             print(f"Exported result for {result[0]} to {output_csv_path}")
