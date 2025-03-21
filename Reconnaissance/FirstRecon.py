@@ -6,17 +6,19 @@ Ce script permet d'exécuter une série de scans Nmap sur une liste d'adresses I
 au format .nmap uniquement, en appendant chaque résultat à un seul fichier global.
 Un fichier CSV est aussi généré pour répertorier les ports ouverts et le type de scan.
 
+Une fois les scans terminés, un `searchsploit` est exécuté pour chaque port ouvert identifié :
+- Une recherche basée sur le nom du service (ex: "Microsoft IIS httpd 10.0")
+- Une recherche basée sur le numéro de port uniquement (avec `-p`)
+
+Les résultats sont exportés dans le même dossier sous forme de fichier `searchsploit.csv`.
+
 Fonctionnalités :
-- Exécute plusieurs types de scans sur chaque IP :
-  - Scan avec scripts par défaut (-sC)
-  - Détection des versions des services (-sV)
-  - Scan de version allégé (--version-light)
-  - Scan de tous les ports (-p-)
-  - Scan lent (-T0)
-  - Scan aléatoire de sites web (-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000)
+- Exécute plusieurs types de scans sur chaque IP
 - Affiche l'état d'avancement des scans en temps réel
 - Enregistre tous les résultats dans un seul fichier .nmap
-- Un fichier CSV récapitulatif des ports ouverts
+- Génère deux fichiers CSV :
+  - Résumé des ports ouverts
+  - Résultat des recherches d'exploits
 
 Utilisation :
 1. Préparer un fichier contenant une liste d'adresses IP (une IP par ligne)
@@ -24,18 +26,11 @@ Utilisation :
    ```
    python script.py <fichier_ip> -o <output.csv> -t <temps_pause>
    ```
-   - `<fichier_ip>` : fichier contenant les adresses IP à scanner
-   - `-o <output.csv>` : (optionnel) fichier CSV pour sauvegarder les résultats (défaut : output.csv)
-   - `-t <temps_pause>` : (optionnel) temps d'attente entre les scans (en secondes)
 
-Exemple d'exécution :
+Exemple :
 ```sh
 python script.py ip_list.txt -o results.csv -t 2
 ```
-
-Attention :
-- L'exécution de ce script peut générer beaucoup de trafic réseau.
-- Veillez à obtenir une autorisation avant de scanner des cibles qui ne vous appartiennent pas.
 
 """
 
@@ -59,7 +54,6 @@ def run_scan(ip, scan_type, scan_command, results, output_file):
         final.writelines(tmp.readlines())
     os.remove(temp_file)
 
-    # Optional: parse ports from output
     try:
         with open(f"{output_file}.nmap", 'r') as file:
             capture = False
@@ -73,9 +67,10 @@ def run_scan(ip, scan_type, scan_command, results, output_file):
                     capture = False
                 elif capture:
                     parts = line.split()
-                    if len(parts) > 1 and "/" in parts[0]:
+                    if len(parts) > 2 and "/" in parts[0]:
                         port = parts[0].split("/")[0]
-                        results.append([current_ip, port, scan_type])
+                        service = " ".join(parts[2:])
+                        results.append([current_ip, port, scan_type, service])
     except Exception as e:
         print(f"[-] Failed to parse .nmap file: {e}")
 
@@ -103,6 +98,26 @@ def scan_target(ip, results, output_file):
     for scan_type, scan_command in long_scans.items():
         run_scan(ip, scan_type, scan_command, results, output_file)
 
+def run_searchsploit(results, output_dir):
+    output_path = os.path.join(output_dir, "searchsploit.csv")
+    with open(output_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["IP", "Port", "Search Type", "Query", "Result"])
+
+        for row in results:
+            ip, port, _, service = row
+            queries = [("service", service), ("port", f"-p {port}")]
+
+            for search_type, query in queries:
+                try:
+                    cmd = f"searchsploit {query}"
+                    print(f"[+] Running: {cmd}")
+                    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                    output = result.stdout.strip().replace('\n', ' | ')
+                    writer.writerow([ip, port, search_type, query, output])
+                except Exception as e:
+                    writer.writerow([ip, port, search_type, query, f"Error: {e}"])
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help='File containing list of IP addresses')
@@ -129,10 +144,14 @@ def main():
     output_csv_path = os.path.join(output_dir, args.output)
     with open(output_csv_path, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['IP Address', 'Port', 'Scan Type'])
+        writer.writerow(['IP Address', 'Port', 'Scan Type', 'Service'])
         for result in results:
             writer.writerow(result)
             print(f"Exported result for {result[0]} to {output_csv_path}")
+
+    print("\n[+] Running SearchSploit lookups...")
+    run_searchsploit(results, output_dir)
+    print("[+] SearchSploit results saved to searchsploit.csv")
 
 if __name__ == "__main__":
     main()
