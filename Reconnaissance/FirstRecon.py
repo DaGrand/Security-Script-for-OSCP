@@ -3,20 +3,20 @@ Nmap Reconnaissance Script
 
 Description:
 Ce script permet d'exécuter une série de scans Nmap sur une liste d'adresses IP, en enregistrant les résultats
-au format standard Nmap (-oA) et en générant un fichier CSV contenant les ports ouverts et les types de scan utilisés.
+au format .nmap uniquement, en appendant chaque résultat à un seul fichier global.
+Un fichier CSV est aussi généré pour répertorier les ports ouverts et le type de scan.
 
 Fonctionnalités :
 - Exécute plusieurs types de scans sur chaque IP :
-  - Scan de version allégé (--version-light)
   - Scan avec scripts par défaut (-sC)
   - Détection des versions des services (-sV)
+  - Scan de version allégé (--version-light)
   - Scan de tous les ports (-p-)
   - Scan lent (-T0)
   - Scan aléatoire de sites web (-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000)
 - Affiche l'état d'avancement des scans en temps réel
-- Enregistre les résultats en sortie dans plusieurs formats :
-  - Fichiers Nmap (.nmap, .xml, .gnmap)
-  - Un fichier CSV récapitulatif des ports ouverts
+- Enregistre tous les résultats dans un seul fichier .nmap
+- Un fichier CSV récapitulatif des ports ouverts
 
 Utilisation :
 1. Préparer un fichier contenant une liste d'adresses IP (une IP par ligne)
@@ -46,31 +46,44 @@ import os
 import subprocess
 from datetime import datetime
 
-def run_scan(ip, scan_type, scan_command, results, output_dir):
+def run_scan(ip, scan_type, scan_command, results, output_file):
     print(f"\n[+] Running: nmap {ip} {scan_command}")
-    export_name = f"{output_dir}/{ip.replace('.', '_')}_{scan_type}"
-    full_command = f"nmap {ip} {scan_command} -oA {export_name}"
+    temp_file = f"{output_file}_tmp.nmap"
+    full_command = f"nmap {ip} {scan_command} -oN {temp_file}"
     subprocess.run(full_command, shell=True)
-    print(f"[+] Results saved: {export_name}.nmap, {export_name}.xml, {export_name}.gnmap\n")
+    print(f"[+] Temporary results saved: {temp_file}")
 
-    # Parse the .gnmap file for open ports
+    # Append the temporary file to the main .nmap file
+    with open(temp_file, 'r') as tmp, open(f"{output_file}.nmap", 'a') as final:
+        final.write(f"\n# Scan Type: {scan_type}\n")
+        final.writelines(tmp.readlines())
+    os.remove(temp_file)
+
+    # Optional: parse ports from output
     try:
-        with open(f"{export_name}.gnmap", 'r') as file:
+        with open(f"{output_file}.nmap", 'r') as file:
+            capture = False
             for line in file:
-                if "/open/" in line:
+                if line.startswith("Nmap scan report for"):
+                    current_ip = line.split()[-1]
+                if line.startswith("PORT"):
+                    capture = True
+                    continue
+                if capture and line.strip() == '':
+                    capture = False
+                elif capture:
                     parts = line.split()
-                    for part in parts:
-                        if "/open/" in part:
-                            port = part.split('/')[0]
-                            results.append([ip, port, scan_type])
-    except FileNotFoundError:
-        print(f"[-] .gnmap file not found for {ip} ({scan_type})")
+                    if len(parts) > 1 and "/" in parts[0]:
+                        port = parts[0].split("/")[0]
+                        results.append([current_ip, port, scan_type])
+    except Exception as e:
+        print(f"[-] Failed to parse .nmap file: {e}")
 
-def scan_target(ip, results, output_dir):
+def scan_target(ip, results, output_file):
     fast_scans = {
-        "light_version": "-sV --version-light",
         "default_scripts": "-sC",
-        "service_version": "-sV"
+        "service_version": "-sV",
+        "light_version": "-sV --version-light"
     }
     long_scans = {
         "all_ports": "-p-",
@@ -80,11 +93,11 @@ def scan_target(ip, results, output_dir):
 
     print("[+] Starting fast scans")
     for scan_type, scan_command in fast_scans.items():
-        run_scan(ip, scan_type, scan_command, results, output_dir)
+        run_scan(ip, scan_type, scan_command, results, output_file)
 
     print("[+] Starting longer scans")
     for scan_type, scan_command in long_scans.items():
-        run_scan(ip, scan_type, scan_command, results, output_dir)
+        run_scan(ip, scan_type, scan_command, results, output_file)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -93,20 +106,22 @@ def main():
     parser.add_argument('-o', '--output', default='output.csv', help='Output file for results')
     args = parser.parse_args()
 
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now().strftime('%m-%d_%H-%M')
     output_dir = f"output_{timestamp}"
     os.makedirs(output_dir, exist_ok=True)
-    
+
+    output_file_base = os.path.join(output_dir, "scan_results")
+
     with open(args.file, 'r') as file:
         ip_list = file.readlines()
-    
+
     results = []
     for ip in ip_list:
         ip = ip.strip()
         print(f"\n[+] Scanning target: {ip}")
-        scan_target(ip, results, output_dir)
-        time.sleep(args.time)  # Pause entre les scans
-    
+        scan_target(ip, results, output_file_base)
+        time.sleep(args.time)
+
     output_csv_path = os.path.join(output_dir, args.output)
     with open(output_csv_path, 'w', newline='') as file:
         writer = csv.writer(file)
