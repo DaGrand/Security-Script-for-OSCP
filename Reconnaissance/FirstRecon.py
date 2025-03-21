@@ -79,7 +79,6 @@ def scan_target(ip, results, output_file, fast_only):
         "default_scripts": "-sC",
         "service_version": "-sV",
         "light_version": "-sV --version-light",
-        "ping scan": "-sP -p",
         "quick scan": "-PN -sV --top-ports 50 --open",
         "search smb vuln": "-PN --script smb-vuln* -p139,445",
         "UDP scan": "-sU -sC -sV"
