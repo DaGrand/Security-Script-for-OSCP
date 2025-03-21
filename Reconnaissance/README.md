@@ -37,7 +37,7 @@ Example: `ips.txt`
 
 2. Run the script:
 ```
-`python FirstRecon.py ips.txt -o output.csv -t 2`
+python FirstRecon.py ips.txt -o output.csv -t 2
 ```
 
 - `ips.txt`: your input list of IP addresses
@@ -52,7 +52,3 @@ Do **not** scan systems you do not own or have explicit permission to scan. This
 ----------------
 - Python 3.x
 - Nmap installed and available in your system path (`nmap` command)
-
-🙌 Author
----------
-This tool was built to streamline and standardize network reconnaissance using Nmap.
