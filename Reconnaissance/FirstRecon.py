@@ -44,10 +44,11 @@ import csv
 import time
 import os
 import subprocess
+from datetime import datetime
 
-def run_scan(ip, scan_type, scan_command, results):
+def run_scan(ip, scan_type, scan_command, results, output_dir):
     print(f"\n[+] Running: nmap {ip} {scan_command}")
-    export_name = f"{ip.replace('.', '_')}_{scan_type}"
+    export_name = f"{output_dir}/{ip.replace('.', '_')}_{scan_type}"
     full_command = f"nmap {ip} {scan_command} -oA {export_name}"
     subprocess.run(full_command, shell=True)
     print(f"[+] Results saved: {export_name}.nmap, {export_name}.xml, {export_name}.gnmap\n")
@@ -65,7 +66,7 @@ def run_scan(ip, scan_type, scan_command, results):
     except FileNotFoundError:
         print(f"[-] .gnmap file not found for {ip} ({scan_type})")
 
-def scan_target(ip, results):
+def scan_target(ip, results, output_dir):
     scans = {
         "all_ports": "-p-",
         "service_version": "-sV",
@@ -76,7 +77,7 @@ def scan_target(ip, results):
     }
     
     for scan_type, scan_command in scans.items():
-        run_scan(ip, scan_type, scan_command, results)
+        run_scan(ip, scan_type, scan_command, results, output_dir)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -84,6 +85,10 @@ def main():
     parser.add_argument('-t', '--time', type=int, default=0, help='Time to wait (in seconds) between scans')
     parser.add_argument('-o', '--output', default='output.csv', help='Output file for results')
     args = parser.parse_args()
+
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    output_dir = f"output_{timestamp}"
+    os.makedirs(output_dir, exist_ok=True)
     
     with open(args.file, 'r') as file:
         ip_list = file.readlines()
@@ -92,15 +97,16 @@ def main():
     for ip in ip_list:
         ip = ip.strip()
         print(f"\n[+] Scanning target: {ip}")
-        scan_target(ip, results)
+        scan_target(ip, results, output_dir)
         time.sleep(args.time)  # Pause entre les scans
     
-    with open(args.output, 'w', newline='') as file:
+    output_csv_path = os.path.join(output_dir, args.output)
+    with open(output_csv_path, 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['IP Address', 'Port', 'Scan Type'])
         for result in results:
             writer.writerow(result)
-            print(f"Exported result for {result[0]} to {args.output}")
+            print(f"Exported result for {result[0]} to {output_csv_path}")
 
 if __name__ == "__main__":
     main()
