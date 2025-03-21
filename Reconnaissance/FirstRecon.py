@@ -7,11 +7,11 @@ au format standard Nmap (-oA) et en générant un fichier CSV contenant les port
 
 Fonctionnalités :
 - Exécute plusieurs types de scans sur chaque IP :
-  - Scan de tous les ports (-p-)
-  - Détection des versions des services (-sV)
   - Scan de version allégé (--version-light)
-  - Scan lent (-T0)
   - Scan avec scripts par défaut (-sC)
+  - Détection des versions des services (-sV)
+  - Scan de tous les ports (-p-)
+  - Scan lent (-T0)
   - Scan aléatoire de sites web (-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000)
 - Affiche l'état d'avancement des scans en temps réel
 - Enregistre les résultats en sortie dans plusieurs formats :
@@ -67,16 +67,23 @@ def run_scan(ip, scan_type, scan_command, results, output_dir):
         print(f"[-] .gnmap file not found for {ip} ({scan_type})")
 
 def scan_target(ip, results, output_dir):
-    scans = {
-        "all_ports": "-p-",
-        "service_version": "-sV",
+    fast_scans = {
         "light_version": "-sV --version-light",
-        "slow_scan": "-T0",
         "default_scripts": "-sC",
+        "service_version": "-sV"
+    }
+    long_scans = {
+        "all_ports": "-p-",
+        "slow_scan": "-T0",
         "random_web": "-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000"
     }
-    
-    for scan_type, scan_command in scans.items():
+
+    print("[+] Starting fast scans")
+    for scan_type, scan_command in fast_scans.items():
+        run_scan(ip, scan_type, scan_command, results, output_dir)
+
+    print("[+] Starting longer scans")
+    for scan_type, scan_command in long_scans.items():
         run_scan(ip, scan_type, scan_command, results, output_dir)
 
 def main():
