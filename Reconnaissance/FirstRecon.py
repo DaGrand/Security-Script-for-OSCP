@@ -14,6 +14,7 @@ Les résultats sont exportés dans le même dossier sous forme de fichier `searc
 
 Fonctionnalités :
 - Exécute plusieurs types de scans sur chaque IP
+- Option pour n'exécuter que les scans rapides (`--fast-only`)
 - Affiche l'état d'avancement des scans en temps réel
 - Enregistre tous les résultats dans un seul fichier .nmap
 - Génère deux fichiers CSV :
@@ -24,12 +25,12 @@ Utilisation :
 1. Préparer un fichier contenant une liste d'adresses IP (une IP par ligne)
 2. Exécuter le script avec la commande :
    ```
-   python script.py <fichier_ip> -o <output.csv> -t <temps_pause>
+   python script.py <fichier_ip> -o <output.csv> -t <temps_pause> [--fast-only]
    ```
 
 Exemple :
 ```sh
-python script.py ip_list.txt -o results.csv -t 2
+python script.py ip_list.txt -o results.csv -t 2 --fast-only
 ```
 
 """
@@ -48,7 +49,6 @@ def run_scan(ip, scan_type, scan_command, results, output_file):
     subprocess.run(full_command, shell=True)
     print(f"[+] Temporary results saved: {temp_file}")
 
-    # Append the temporary file to the main .nmap file
     with open(temp_file, 'r') as tmp, open(f"{output_file}.nmap", 'a') as final:
         final.write(f"\n# Scan Type: {scan_type}\n")
         final.writelines(tmp.readlines())
@@ -74,7 +74,7 @@ def run_scan(ip, scan_type, scan_command, results, output_file):
     except Exception as e:
         print(f"[-] Failed to parse .nmap file: {e}")
 
-def scan_target(ip, results, output_file):
+def scan_target(ip, results, output_file, fast_only):
     fast_scans = {
         "default_scripts": "-sC",
         "service_version": "-sV",
@@ -94,9 +94,10 @@ def scan_target(ip, results, output_file):
     for scan_type, scan_command in fast_scans.items():
         run_scan(ip, scan_type, scan_command, results, output_file)
 
-    print("[+] Starting longer scans")
-    for scan_type, scan_command in long_scans.items():
-        run_scan(ip, scan_type, scan_command, results, output_file)
+    if not fast_only:
+        print("[+] Starting longer scans")
+        for scan_type, scan_command in long_scans.items():
+            run_scan(ip, scan_type, scan_command, results, output_file)
 
 def run_searchsploit(results, output_dir):
     output_path = os.path.join(output_dir, "searchsploit.csv")
@@ -123,6 +124,7 @@ def main():
     parser.add_argument('file', help='File containing list of IP addresses')
     parser.add_argument('-t', '--time', type=int, default=0, help='Time to wait (in seconds) between scans')
     parser.add_argument('-o', '--output', default='output.csv', help='Output file for results')
+    parser.add_argument('--fast-only', action='store_true', help='Run only fast scans')
     args = parser.parse_args()
 
     timestamp = datetime.now().strftime('%m-%d_%H-%M')
@@ -138,7 +140,7 @@ def main():
     for ip in ip_list:
         ip = ip.strip()
         print(f"\n[+] Scanning target: {ip}")
-        scan_target(ip, results, output_file_base)
+        scan_target(ip, results, output_file_base, args.fast_only)
         time.sleep(args.time)
 
     output_csv_path = os.path.join(output_dir, args.output)
