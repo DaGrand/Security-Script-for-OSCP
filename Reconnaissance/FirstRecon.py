@@ -22,7 +22,7 @@ Utilisation :
 1. Préparer un fichier contenant une liste d'adresses IP (une IP par ligne)
 2. Exécuter le script avec la commande :
    ```
-   python FirstRecon.py <fichier_ip> -o <output.csv> -t <temps_pause>
+   python script.py <fichier_ip> -o <output.csv> -t <temps_pause>
    ```
    - `<fichier_ip>` : fichier contenant les adresses IP à scanner
    - `-o <output.csv>` : (optionnel) fichier CSV pour sauvegarder les résultats (défaut : output.csv)
@@ -43,18 +43,27 @@ import argparse
 import csv
 import time
 import os
+import subprocess
 
 def run_scan(ip, scan_type, scan_command, results):
     print(f"\n[+] Running: nmap {ip} {scan_command}")
-    scanner = nmap.PortScanner()
-    scanner.scan(ip, arguments=scan_command)
     export_name = f"{ip.replace('.', '_')}_{scan_type}"
-    os.system(f"nmap {ip} {scan_command} -oA {export_name}")
+    full_command = f"nmap {ip} {scan_command} -oA {export_name}"
+    subprocess.run(full_command, shell=True)
     print(f"[+] Results saved: {export_name}.nmap, {export_name}.xml, {export_name}.gnmap\n")
-    
-    for port in scanner[ip]['tcp']:
-        if scanner[ip]['tcp'][port]['state'] == 'open':
-            results.append([ip, port, scan_type])
+
+    # Parse the .gnmap file for open ports
+    try:
+        with open(f"{export_name}.gnmap", 'r') as file:
+            for line in file:
+                if "/open/" in line:
+                    parts = line.split()
+                    for part in parts:
+                        if "/open/" in part:
+                            port = part.split('/')[0]
+                            results.append([ip, port, scan_type])
+    except FileNotFoundError:
+        print(f"[-] .gnmap file not found for {ip} ({scan_type})")
 
 def scan_target(ip, results):
     scans = {
