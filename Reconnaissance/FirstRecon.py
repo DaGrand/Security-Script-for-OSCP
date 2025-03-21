@@ -4,9 +4,9 @@ Nmap Reconnaissance Script
 Description:
 Ce script permet d'exécuter une série de scans Nmap sur une liste d'adresses IP, en enregistrant les résultats
 au format .nmap uniquement, en appendant chaque résultat à un seul fichier global.
-Un fichier CSV est aussi généré pour répertorier les ports ouverts et le type de scan.
+Un fichier CSV est aussi généré pour répertorier les ports ouverts et le type de service.
 
-Une fois les scans terminés, un `searchsploit` est exécuté pour chaque port ouvert identifié :
+Une fois les scans terminés, un `searchsploit` est exécuté pour chaque port/service unique identifié dans le CSV :
 - Une recherche basée sur le nom du service (ex: "Microsoft IIS httpd 10.0")
 - Une recherche basée sur le numéro de port uniquement (avec `-p`)
 
@@ -19,7 +19,7 @@ Fonctionnalités :
 - Enregistre tous les résultats dans un seul fichier .nmap
 - Génère deux fichiers CSV :
   - Résumé des ports ouverts (avec nettoyage des doublons)
-  - Résultat des recherches d'exploits
+  - Résultat des recherches d'exploits basées sur `output.csv`
 
 Utilisation :
 1. Préparer un fichier contenant une liste d'adresses IP (une IP par ligne)
@@ -117,13 +117,16 @@ def clean_csv_duplicates(csv_path):
         writer.writerows(unique_rows)
     print("[+] Duplicate entries removed.")
 
-def run_searchsploit(results, output_dir):
+def run_searchsploit_from_csv(csv_path, output_dir):
+    print("[+] Running SearchSploit lookups from cleaned CSV...")
     output_path = os.path.join(output_dir, "searchsploit.csv")
-    with open(output_path, 'w', newline='') as file:
-        writer = csv.writer(file)
+    with open(csv_path, 'r') as input_file, open(output_path, 'w', newline='') as output_file:
+        reader = csv.reader(input_file)
+        header = next(reader)  # Skip header
+        writer = csv.writer(output_file)
         writer.writerow(["IP", "Port", "Search Type", "Query", "Result"])
 
-        for row in results:
+        for row in reader:
             ip, port, service = row
             queries = [("service", service), ("port", f"-p {port}")]
 
@@ -169,11 +172,9 @@ def main():
             writer.writerow(result)
             print(f"Exported result for {result[0]} to {output_csv_path}")
 
-    # Nettoyage des doublons
     clean_csv_duplicates(output_csv_path)
 
-    print("\n[+] Running SearchSploit lookups...")
-    run_searchsploit(results, output_dir)
+    run_searchsploit_from_csv(output_csv_path, output_dir)
     print("[+] SearchSploit results saved to searchsploit.csv")
 
 if __name__ == "__main__":
