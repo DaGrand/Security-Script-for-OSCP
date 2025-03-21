@@ -80,11 +80,11 @@ def scan_target(ip, results, output_file, fast_only):
         "service_version": "-sV",
         "light_version": "-sV --version-light",
         "quick scan": "-PN -sV --top-ports 50 --open",
-        "search smb vuln": "-PN --script smb-vuln* -p139,445",
-        "UDP scan": "-sU -sC -sV"
+        "search smb vuln": "-PN --script smb-vuln* -p139,445"
     }
     long_scans = {
         "all_ports": "-p-",
+        "UDP scan": "-sU -sC -sV",
         "slow_scan": "-T0",
         "random_web": "-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000"
     }
