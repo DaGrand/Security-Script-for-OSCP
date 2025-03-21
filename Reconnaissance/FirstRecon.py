@@ -18,7 +18,7 @@ Fonctionnalités :
 - Affiche l'état d'avancement des scans en temps réel
 - Enregistre tous les résultats dans un seul fichier .nmap
 - Génère deux fichiers CSV :
-  - Résumé des ports ouverts
+  - Résumé des ports ouverts (avec nettoyage des doublons)
   - Résultat des recherches d'exploits
 
 Utilisation :
@@ -79,8 +79,8 @@ def scan_target(ip, results, output_file, fast_only):
         "default_scripts": "-sC",
         "service_version": "-sV",
         "light_version": "-sV --version-light",
-        "quick scan": "-PN -sV --top-ports 50 --open",
-        "search smb vuln": "-PN --script smb-vuln* -p139,445"
+        "quick scan": "-Pn -sV --top-ports 50 --open",
+        "search smb vuln": "-Pn --script smb-vuln* -p139,445"
     }
     long_scans = {
         "all_ports": "-p-",
@@ -97,6 +97,25 @@ def scan_target(ip, results, output_file, fast_only):
         print("[+] Starting longer scans")
         for scan_type, scan_command in long_scans.items():
             run_scan(ip, scan_type, scan_command, results, output_file)
+
+def clean_csv_duplicates(csv_path):
+    print("[+] Cleaning duplicates in output CSV...")
+    seen = set()
+    unique_rows = []
+    with open(csv_path, 'r') as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        for row in reader:
+            key = tuple(row)
+            if key not in seen:
+                seen.add(key)
+                unique_rows.append(row)
+
+    with open(csv_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(header)
+        writer.writerows(unique_rows)
+    print("[+] Duplicate entries removed.")
 
 def run_searchsploit(results, output_dir):
     output_path = os.path.join(output_dir, "searchsploit.csv")
@@ -149,6 +168,9 @@ def main():
         for result in results:
             writer.writerow(result)
             print(f"Exported result for {result[0]} to {output_csv_path}")
+
+    # Nettoyage des doublons
+    clean_csv_duplicates(output_csv_path)
 
     print("\n[+] Running SearchSploit lookups...")
     run_searchsploit(results, output_dir)
