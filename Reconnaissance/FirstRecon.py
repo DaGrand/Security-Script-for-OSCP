@@ -85,8 +85,8 @@ def scan_target(ip, results, output_file, fast_only):
     long_scans = {
         "all_ports": "-p-",
         "UDP scan": "-sU -sC -sV",
-        "slow_scan": "-T0",
-        "random_web": "-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000"
+        #"slow_scan": "-T0",
+        #"random_web": "-n -Pn -p 80 --open -sV -vvv --script banner,http-title -iR 1000"
     }
 
     print("[+] Starting fast scans")
